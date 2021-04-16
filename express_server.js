@@ -12,7 +12,6 @@ app.use(cookieParser());
 function generateRandomString() {
   return Math.floor((1 + Math.random()) * 0x1000000).toString(16).substring(1);
 }
-
 function emailChecker(email) {
 
   for (let elem in users) {
@@ -27,21 +26,32 @@ function passwordChecker(email, password) {
   for (let elem in users) {
     if (users[elem].email === email && users[elem].password === password) {
 
-      console.log(users[elem]);
       return users[elem];
-
     }
   }
   return false;
 }
+function urlsForUser (userID) {
+  const returnObject = {};
 
+  for (let elem in urlDatabase) {
+    if (urlDatabase[elem].userID === userID) {
+      returnObject[elem] = {
+        longURL: urlDatabase[elem].longURL,
+        userID: urlDatabase[elem].userID
+      };
+    }
+  }
+
+  return returnObject;
+}
 // Database which keeps tracks of our urls and shortUrls
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  b6UTxQ: { longURL: "https://www.tsn.ca", userID: "userRandom" },
+  i3BoGr: { longURL: "https://www.google.ca", userID: "aJ48lW" },
+  skdoW1: { longURL: "https://www.google.ca", userID: "userRandom" },
+  s7ahsk: { longURL: "https://www.google.ca", userID: "userRandom" }
 };
-
-// Database keeping track of registered users
 const users = {
   "userRandom": {
     id: "userRandom",
@@ -55,6 +65,9 @@ const users = {
   }
 };
 
+
+// Database keeping track of registered users
+
 // APP.SET
 app
   .set("view engine", "ejs");
@@ -66,38 +79,56 @@ app.get("/urls.json", (req, res) => {
 
 app.get("/urls", (req, res) => {
   const userid = req.cookies.user_id;
-  const userObject = users[userid];
-
-  const templateVars = { urls: urlDatabase, user: userObject }
-  res.render("urls_index", templateVars);
+  if(!userid) {
+    return res.redirect("/login");
+  }
+  // const urlObject = urlsForUser(userid);
+  // const templateVars = { urlObject: urlObject, user: true }
+  res.render("urls_index", { urlObject: urlsForUser(userid), user: true });
 });
 
 app.get("/urls/new", (req, res) => {
   const userid = req.cookies.user_id;
   const userObject = users[userid];
 
-  const templateVars = { user: userObject }
-  res.render("urls_new", templateVars);
+  if (userid) {
+    // const templateVars = { user: userObject }
+    res.render("urls_new", {user: userObject});
+  }
+  res.redirect("/login");
+
 });
 
 app.get("/urls/:shortURL", (req, res) => {
   const userid = req.cookies.user_id;
-  const userObject = users[userid];
-  const templateVars =
-    { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], user: userObject };
+  if (userid) {
+    const userObject = users[userid];
+    if (userid === urlDatabase[req.params.shortURL]["userID"]) {
 
-  res.render("urls_show", templateVars);
+
+      const templateVars =
+        { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL, user: userObject };
+
+
+      res.render("urls_show", templateVars);
+    } else {
+      return res
+      .status(404)
+      .send("Unathorized!")
+    }
+  } 
+  res.redirect("/login");
 });
 
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL]
+  const longURL = urlDatabase[req.params.shortURL].longURL
   res.redirect(longURL);
 });
 
 app.get("/login", (req, res) => {
 
   res.
-  render("login");
+    render("login");
 })
 app.post("/login", (req, res) => {
 
@@ -105,8 +136,8 @@ app.post("/login", (req, res) => {
   const checkUser = passwordChecker(user.email, user.password)
   if (checkUser) {
     res
-    .cookie("user_id", checkUser.id)
-    .redirect("/urls")
+      .cookie("user_id", checkUser.id)
+      .redirect("/urls")
   }
   return res
     .status(403)
@@ -157,18 +188,18 @@ app.post("/logout", (req, res) => {
 
 app.post("/register", (req, res) => {
   const randomUserID = generateRandomString();
-  
+
   if (!req.body.email || !req.body.password) {
     return res
-    .status(400)
-    .send("Error email !")
+      .status(400)
+      .send("Error email !")
   }
   if (emailChecker(req.body.email)) {
     return res
-    .status(400)
-    .send("Error code 400!")
+      .status(400)
+      .send("Error code 400!")
   }
-  
+
   // Update global users with newly registered information
   users[randomUserID] = {
     id: randomUserID,
