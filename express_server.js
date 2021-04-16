@@ -3,6 +3,8 @@ const app = express();
 const PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
 var cookieParser = require('cookie-parser');
+const bcrypt = require('bcrypt');
+
 
 
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -24,7 +26,7 @@ function emailChecker(email) {
 function passwordChecker(email, password) {
 
   for (let elem in users) {
-    if (users[elem].email === email && users[elem].password === password) {
+    if (users[elem].email === email && bcrypt.compareSync(password, users[elem].password)) {
 
       return users[elem];
     }
@@ -56,7 +58,7 @@ const users = {
   "userRandom": {
     id: "userRandom",
     email: "a@b.com",
-    password: "abc"
+    password: bcrypt.hashSync("abc", 10)
   },
   "user2RandomID": {
     id: "user2RandomID",
@@ -79,12 +81,13 @@ app.get("/urls.json", (req, res) => {
 
 app.get("/urls", (req, res) => {
   const userid = req.cookies.user_id;
+  console.log(userid)
   if(!userid) {
     return res.redirect("/login");
   }
   // const urlObject = urlsForUser(userid);
   // const templateVars = { urlObject: urlObject, user: true }
-  res.render("urls_index", { urlObject: urlsForUser(userid), user: true });
+  res.render("urls_index", { urlObject: urlsForUser(userid), user: users[userid] });
 });
 
 app.get("/urls/new", (req, res) => {
@@ -93,9 +96,9 @@ app.get("/urls/new", (req, res) => {
 
   if (userid) {
     // const templateVars = { user: userObject }
-    res.render("urls_new", {user: userObject});
+    return res.render("urls_new", {user: userObject});
   }
-  res.redirect("/login");
+  return res.redirect("/login");
 
 });
 
@@ -135,7 +138,7 @@ app.post("/login", (req, res) => {
   const user = req.body;
   const checkUser = passwordChecker(user.email, user.password)
   if (checkUser) {
-    res
+    return res
       .cookie("user_id", checkUser.id)
       .redirect("/urls")
   }
@@ -204,8 +207,9 @@ app.post("/register", (req, res) => {
   users[randomUserID] = {
     id: randomUserID,
     email: req.body.email,
-    password: req.body.password
+    password: bcrypt.hashSync(req.body.password, 10)
   }
+  console.log(users)
   res
     .cookie("user_id", randomUserID)
     .redirect("/urls")
