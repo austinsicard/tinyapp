@@ -1,9 +1,14 @@
 const express = require("express");
 const app = express();
+
 const PORT = 8080; // default port 8080
+
 const bodyParser = require("body-parser");
 const cookieSession = require('cookie-session')
+
 const bcrypt = require('bcrypt');
+
+// Require all our helper functions to be used
 const { generateRandomString, getUserByEmail, passwordChecker, urlsForUser } = require('./helpers');
 
 app.use(cookieSession({
@@ -13,13 +18,14 @@ app.use(cookieSession({
 
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Database which keeps tracks of our urls and shortUrls
+// Database keeping track of our urls and shortUrls
 const urlDatabase = {
   b6UTxQ: { longURL: "https://www.tsn.ca", userID: "userRandom" },
   i3BoGr: { longURL: "https://www.google.ca", userID: "aJ48lW" },
   skdoW1: { longURL: "https://www.google.ca", userID: "userRandom" },
   s7ahsk: { longURL: "https://www.gmail.ca", userID: "userRandom" }
 };
+// Database keeping track of our registered users
 const users = {
   "userRandom": {
     id: "userRandom",
@@ -28,10 +34,6 @@ const users = {
   },
 };
 
-
-// Database keeping track of registered users
-
-// APP.SET
 app
   .set("view engine", "ejs");
 
@@ -39,21 +41,18 @@ app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
 
-// Sets the /urls page, if not logged in will redirect to the /login page
-
+// Renders the /urls page, if not logged in will redirect to the /login page
 app.get("/urls", (req, res) => {
   const userid = req.session.user_id;
 
   if(!userid) {
     return res.redirect("/login");
   }
-  // const urlObject = urlsForUser(userid);
-  // const templateVars = { urlObject: urlObject, user: true }
   res.render("urls_index", { urlObject: urlsForUser(userid, urlDatabase), user: users[userid] });
 });
 
 app.post("/urls", (req, res) => {
-  const shortU = generateRandomString(); // Calling on our function that generates a random String
+  const shortU = generateRandomString(); 
 
   urlDatabase[shortU] = {
     longURL: req.body.longURL,
@@ -70,6 +69,7 @@ app.get("/login", (req, res) => {
   res.
     render("login");
 })
+
 app.post("/login", (req, res) => {
 
   const user = req.body;
@@ -127,11 +127,6 @@ app.get("/u/:shortURL", (req, res) => {
   res.redirect(longURL);
 });
 
-app.get("/register", (req, res) => {
-
-  res.render("register");
-});
-
 // Updates Long URL after providing a valid http website and clicking Submit
 app.post("/urls/:shortURL", (req, res) => {
 
@@ -158,20 +153,20 @@ app.post('/urls/:shortURL/delete', (req, res) => {
     .redirect("/urls");        // Redirects to /url website after the post request to remove is complete
 });
 
-// Save a username with res.cookie and redirect to /url
-// app.post('/login', (req, res) => {
-//   const username = req.body.username;
-//   res
-//     .cookie('userID', username)
-//     .redirect(`/urls`)
-// });
-
+// Logs a User out
 app.post("/logout", (req, res) => {
   req.session = null;
   res
     .redirect("/urls");
 });
 
+// Renders the register page
+app.get("/register", (req, res) => {
+
+  res.render("register");
+});
+
+// Registers a user into the database and avoids duplicate emails and incorrect input
 app.post("/register", (req, res) => {
   const randomUserID = generateRandomString();
 
@@ -180,7 +175,7 @@ app.post("/register", (req, res) => {
       .status(400)
       .send("Error email !")
   }
-  if (emailChecker(req.body.email, users)) {
+  if (getUserByEmail(req.body.email, users)) {
     return res
       .status(400)
       .send("Error code 400!")

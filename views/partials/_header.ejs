@@ -4,10 +4,10 @@
     <a class="navbar-brand" href="/urls">TinyApp</a>
     <% if (!locals.user) { %>
       <form method="GET" action="/register">
-        <button>Register</button>
+        <button class="btn btn-warning">Register</button>
       </form>
       <form method="GET" action="/login">
-        <button>login</button>
+        <button class="btn btn-light">Login</button>
       </form>
       <% } else { %>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup"
